@@ -41,22 +41,44 @@ class LimerickDetector:
         if a not in self._pronunciations or b not in self._pronunciations:
             return False
 
-        rhyme = False
-        # if words start with consonants
+        n_a = self.num_syllables(a)
+        n_b = self.num_syllables(b)
 
-        for pronounce_a in self._pronunciations[a]:
-            for pronounce_b in self._pronunciations[b]:
-                _rhyme = True
-                n_syllables_a = len(pronounce_a)
-                n_syllables_b = len(pronounce_b)
-                for p_a, p_b in zip(pronounce_a[n_syllables_a - min(n_syllables_a, n_syllables_b) + 1:],
-                                    pronounce_b[n_syllables_b - min(n_syllables_a, n_syllables_b) + 1:]):
-                    if p_a != p_b:
-                        _rhyme = False
-                        break
-                rhyme = rhyme or _rhyme
+        # in principle we can have more than one pronunciation for each word
+        # get all the shortest pronunciations
+        min_phonemes_a = min(map(len, self._pronunciations[a]))
+        phonemes_a = list(filter(lambda x: len(x) == min_phonemes_a, self._pronunciations[a]))
 
-        return rhyme
+        min_phonemes_b = min(map(len, self._pronunciations[b]))
+        phonemes_b = list(filter(lambda x: len(x) == min_phonemes_b, self._pronunciations[b]))
+
+        for p_a in phonemes_a:
+            for p_b in phonemes_b:
+
+                vowel_positions_a = [x for x in range(len(p_a)) if  p_a[x][-1].isdigit()]
+                vowel_positions_b = [x for x in range(len(p_b)) if  p_b[x][-1].isdigit()]
+
+                # no vowels in the phonemes
+                if len(vowel_positions_b)==0 or len(vowel_positions_a)==0:
+                    continue
+
+                first_vowel_a = vowel_positions_a[0]
+                first_vowel_b = vowel_positions_b[0]
+
+                if n_a == n_b:
+                    # if they are the same length
+                    if p_a[first_vowel_a:] == p_b[first_vowel_b:]:
+                        return True
+                else:
+                    # if they are not the same length, one word must have another as suffix
+                    if n_b < n_a:
+                        # SWAP A and B
+                        p_a, p_b, first_vowel_a, first_vowel_b = p_b, p_a, first_vowel_b, first_vowel_a
+
+                    if p_a[first_vowel_a : ] ==  p_b[len(p_b) - len(p_a)+first_vowel_a:]:
+                        return True
+
+        return False
 
     def is_limerick(self, text):
         """
