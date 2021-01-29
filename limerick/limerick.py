@@ -32,6 +32,23 @@ class LimerickDetector:
             num_stress = len([x for x in phonemes if x[-1].isdigit()])
             return num_stress
 
+    def guess_syllables(self, word):
+        """
+        Guesses the number of syllables by counting the number of non-contiguous vowels
+        """
+        # the most common letters that denote a vowel sound are aeiouy
+        # however, if the last letter is 'e' it is usually omitted. Like 'spite', 'hike', 'placate'
+        vowels = "aeiouyAEIOUY"
+        last_character_vowel = False
+        n_vowels = 0
+        for i in range(len(word)):
+            current_character_vowel = word[i] in vowels
+            if (not last_character_vowel and current_character_vowel) \
+                and (not (i == len(word)-1 and word[i]=="e")):
+                    n_vowels += 1
+            last_character_vowel = current_character_vowel
+        return n_vowels
+
     def rhymes(self, a, b):
         """
         Returns True if two words (represented as lower-case strings) rhyme,
