@@ -32,6 +32,19 @@ class LimerickDetector:
             num_stress = len([x for x in phonemes if x[-1].isdigit()])
             return num_stress
 
+    def apostrophe_tokenize(self, line):
+        word_tokens = word_tokenize(line)
+        apostrophe_tokens = []
+        i = 0
+        while i < len(word_tokens):
+            if i + 1 < len(word_tokens) and word_tokens[i + 1] == "n't" or word_tokens[i + 1] == "'ve":
+                apostrophe_tokens.append(word_tokens[i] + word_tokens[i + 1])
+                i += 1
+            else:
+                apostrophe_tokens.append(word_tokens[i])
+            i += 1
+        return apostrophe_tokens
+
     def guess_syllables(self, word):
         """
         Guesses the number of syllables by counting the number of non-contiguous vowels
@@ -44,8 +57,8 @@ class LimerickDetector:
         for i in range(len(word)):
             current_character_vowel = word[i] in vowels
             if (not last_character_vowel and current_character_vowel) \
-                and (not (i == len(word)-1 and word[i]=="e")):
-                    n_vowels += 1
+                    and (not (i == len(word) - 1 and word[i] == "e")):
+                n_vowels += 1
             last_character_vowel = current_character_vowel
         return n_vowels
 
@@ -72,11 +85,11 @@ class LimerickDetector:
         for p_a in phonemes_a:
             for p_b in phonemes_b:
 
-                vowel_positions_a = [x for x in range(len(p_a)) if  p_a[x][-1].isdigit()]
-                vowel_positions_b = [x for x in range(len(p_b)) if  p_b[x][-1].isdigit()]
+                vowel_positions_a = [x for x in range(len(p_a)) if p_a[x][-1].isdigit()]
+                vowel_positions_b = [x for x in range(len(p_b)) if p_b[x][-1].isdigit()]
 
                 # no vowels in the phonemes
-                if len(vowel_positions_b)==0 or len(vowel_positions_a)==0:
+                if len(vowel_positions_b) == 0 or len(vowel_positions_a) == 0:
                     continue
 
                 first_vowel_a = vowel_positions_a[0]
@@ -92,7 +105,7 @@ class LimerickDetector:
                         # SWAP A and B
                         p_a, p_b, first_vowel_a, first_vowel_b = p_b, p_a, first_vowel_b, first_vowel_a
 
-                    if p_a[first_vowel_a : ] ==  p_b[len(p_b) - len(p_a)+first_vowel_a:]:
+                    if p_a[first_vowel_a:] == p_b[len(p_b) - len(p_a) + first_vowel_a:]:
                         return True
 
         return False
@@ -118,7 +131,7 @@ class LimerickDetector:
         for line in lines:
             tokens = nltk.tokenize.word_tokenize(line)
 
-            if len(tokens)==0:
+            if len(tokens) == 0:
                 continue
 
             words = [x for x in tokens if x not in punctuation]
@@ -142,10 +155,13 @@ class LimerickDetector:
         rhyme_flag = True
         for k, v in rhyme_dict.items():
             # check for pairwise rhyme
-            for i in range(len(v)-1):
-                rhyme_flag = rhyme_flag and self.rhymes(v[i], v[i+1])
+            for i in range(len(v) - 1):
+                rhyme_flag = rhyme_flag and self.rhymes(v[i], v[i + 1])
 
         return rhyme_flag
+
+
+
 
 
 if __name__ == "__main__":
