@@ -81,7 +81,8 @@ until the fourth line"""
         self.assertEqual(self.ld.is_limerick(b), False)
         self.assertEqual(self.ld.is_limerick(c), False)
         self.assertEqual(self.ld.is_limerick(d), False)
-        self.assertEqual(self.ld.is_limerick(g), True)
+        self.assertEqual(self.ld.is_limerick(f), False)
+        self.assertEqual(self.ld.is_limerick(e), True)
 
 if __name__ == '__main__':
     unittest.main()
