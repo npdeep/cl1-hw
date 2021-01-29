@@ -78,12 +78,12 @@ class LimerickDetector:
         rhyme_dict = {}
         line_counter = 0
         for line in lines:
-            words = nltk.tokenize.word_tokenize(line)
-            if len(words) == 0:
-                continue
+            words = [x for x in nltk.tokenize.word_tokenize(line) if x not in punctuation]
             last_word = words[-1]
 
             # if only space or only one character
+            if len(words)==0:
+                continue
 
             # if any of the word is not in the dictionary, return False
             if last_word not in self._pronunciations:
@@ -99,14 +99,14 @@ class LimerickDetector:
         # more than five sentences
         if line_counter != 5:
             return False
-        # now make sure that all
+
         rhyme_flag = True
-        print(rhyme_dict)
         for k, v in rhyme_dict.items():
             # check for pairwise rhyme
             for i in range(len(v)-1):
+                print(v[i], v[i+1], self.rhymes(v[i], v[i+1]))
                 rhyme_flag = rhyme_flag and self.rhymes(v[i], v[i+1])
-        print(text, rhyme_flag)
+        print(rhyme_flag)
         return rhyme_flag
 
 
