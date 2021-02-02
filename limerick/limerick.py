@@ -120,13 +120,13 @@ class LimerickDetector:
         """
         lines = text.split("\n")
 
-        # if more than 5 lines in the text
-        rhyme_scheme = "AABBA"
-        rhyme_dict = {}
-        line_counter = 0
+        # list of last words
+        last_words = []
+
         for line in lines:
             tokens = nltk.tokenize.word_tokenize(line)
 
+            # skip empty lines
             if len(tokens) == 0:
                 continue
 
@@ -137,27 +137,15 @@ class LimerickDetector:
             if last_word not in self._pronunciations:
                 return False
 
-            if rhyme_scheme[line_counter] not in rhyme_dict:
-                rhyme_dict[rhyme_scheme[line_counter]] = [last_word]
-            else:
-                rhyme_dict[rhyme_scheme[line_counter]].append(last_word)
-                # if the word already exists in the limerick
-            line_counter += 1
+            last_words.append(last_word)
 
-        # more than five sentences
-        if line_counter != 5:
+        if len(last_words) != 5:
             return False
 
-        rhyme_flag = True
-        for k, v in rhyme_dict.items():
-            # check for pairwise rhyme
-            for i in range(len(v) - 1):
-                rhyme_flag = rhyme_flag and self.rhymes(v[i], v[i + 1])
-
-        return rhyme_flag
-
-
-
+        return self.rhymes(last_words[0], last_words[1]) and \
+                self.rhymes(last_words[0], last_words[4]) and \
+                self.rhymes(last_words[1], last_words[4]) and \
+                self.rhymes(last_words[2], last_words[3])
 
 
 if __name__ == "__main__":
