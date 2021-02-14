@@ -24,6 +24,12 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(self.ld.rhymes("failure", "savior"), False)
         self.assertEqual(self.ld.rhymes("cup", "duck"), False)
 
+    def test_rhyme_extra(self):
+        self.assertEqual(self.ld.rhymes("fall", "ball"), True)
+        self.assertEqual(self.ld.rhymes("along", "wrong"), True)
+        self.assertEqual(self.ld.rhymes("eye", "dry"), True)
+        self.assertEqual(self.ld.rhymes("scratch", "patch"), True)
+
     def test_syllables(self):
         self.assertEqual(self.ld.num_syllables("dog"), 1)
         self.assertEqual(self.ld.num_syllables("asdf"), 1)
@@ -36,6 +42,20 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(self.ld.num_syllables("placate"), 2)
         self.assertEqual(self.ld.num_syllables("renege"), 2)
         self.assertEqual(self.ld.num_syllables("reluctant"), 3)
+
+    def test_guess_syllables(self):
+        self.assertEqual(self.ld.guess_syllables("dog"), 1)
+        self.assertEqual(self.ld.guess_syllables("letter"), 2)
+        self.assertEqual(self.ld.guess_syllables("washington"), 3)
+        self.assertEqual(self.ld.guess_syllables("dock"), 1)
+        # self.assertEqual(self.ld.guess_syllables("dangle"), 2)
+        self.assertEqual(self.ld.guess_syllables("thrive"), 1)
+        self.assertEqual(self.ld.guess_syllables("fly"), 1)
+        self.assertEqual(self.ld.guess_syllables("placate"), 2)
+        self.assertEqual(self.ld.guess_syllables("renege"), 2)
+        self.assertEqual(self.ld.guess_syllables("reluctant"), 3)
+        self.assertEqual(self.ld.guess_syllables("Walter"), 2)
+
 
     def test_examples(self):
 
@@ -83,6 +103,8 @@ until the fourth line"""
         self.assertEqual(self.ld.is_limerick(d), False)
         self.assertEqual(self.ld.is_limerick(f), False)
         self.assertEqual(self.ld.is_limerick(e), True)
+
+
 
 if __name__ == '__main__':
     unittest.main()

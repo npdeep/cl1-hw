@@ -2,7 +2,6 @@
 import random
 import numpy as np
 from math import exp, log
-from collections import defaultdict
 
 import argparse
 
@@ -29,7 +28,7 @@ class Example:
     """
     Class to represent a logistic regression example
     """
-    def __init__(self, label, words, vocab, df):
+    def __init__(self, label, words, vocab, df, n_documents=None):
         """
         Create a new example
         :param label: The label (0 / 1) of the example
@@ -39,12 +38,16 @@ class Example:
         self.nonzero = {vocab.index(kBIAS): 1}
         self.y = label
         self.x = np.zeros(len(vocab))
+        self.tfidf = np.zeros(len(vocab))
         for word, count in [x.split(":") for x in words]:
             if word in vocab:
                 assert word != kBIAS, "Bias can't actually appear in document"
                 self.x[vocab.index(word)] += float(count)
+                if n_documents is not None:
+                    self.tfidf[vocab.index(word)] += float(count)*log(n_documents/df[vocab.index(word)])
                 self.nonzero[vocab.index(word)] = word
         self.x[0] = 1
+        self.tfidf[0] = 1
 
 
 class LogReg:
@@ -61,6 +64,8 @@ class LogReg:
         self.mu = mu
         self.step = step
         self.last_update = np.zeros(num_features)
+        self.use_tfidf = None
+        self.lazy = None
 
         assert self.mu >= 0, "Regularization parameter must be non-negative"
 
@@ -98,6 +103,24 @@ class LogReg:
         :param use_tfidf: A boolean to switch between the raw data and the tfidf representation
         :return: Return the new value of the regression coefficients
         """
+        self.lazy = lazy
+        self.use_tfidf = use_tfidf
+
+        if use_tfidf:
+            self.beta  -= self.step(iteration) * \
+                          ((sigmoid(np.dot(train_example.tfidf, self.beta)) - train_example.y) * train_example.tfidf +
+                           2*self.mu*self.beta)
+        elif lazy:
+            # self.beta -= self.step(iteration) * \
+            #              ((sigmoid(np.dot(train_example.x, self.beta))-train_example.y) * train_example.x  +
+            #               ((iteration - self.last_update)/n) * 2*self.mu*self.beta*(train_example.x > 0))
+            # self.last_update[train_example.x > 0] = iteration
+            pass
+        else:
+            self.beta  -= self.step(iteration) * \
+                          ((sigmoid(np.dot(train_example.x, self.beta))-train_example.y) * train_example.x +
+                           2 * self.mu * self.beta)
+
 
         return self.beta
 
@@ -107,6 +130,7 @@ class LogReg:
         all variables that need it.
         Only implement this function if you do the extra credit.
         """
+        self.beta
 
         return self.beta
 
@@ -123,11 +147,13 @@ def read_dataset(positive, negative, vocab, test_proportion=.1):
     assert vocab[0] == kBIAS, \
         "First vocab word must be bias term (was %s)" % vocab[0]
 
+    n_documents = len(open(positive).readlines()) + len(open(negative).readlines())
+
     train = []
     test = []
     for label, input in [(1, positive), (0, negative)]:
         for line in open(input):
-            ex = Example(label, line.split(), vocab, df)
+            ex = Example(label, line.split(), vocab, df, n_documents)
             if random.random() <= test_proportion:
                 test.append(ex)
             else:
@@ -142,9 +168,9 @@ def read_dataset(positive, negative, vocab, test_proportion=.1):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--mu", help="Weight of L2 regression",
-                           type=float, default=0.0, required=False)
+                           type=float, default=0.00, required=False)
     argparser.add_argument("--step", help="Initial SG step size",
-                           type=float, default=0.1, required=False)
+                           type=float, default=0.02, required=False)
     argparser.add_argument("--positive", help="Positive class",
                            type=str, default="data/positive", required=False)
     argparser.add_argument("--negative", help="Negative class",
@@ -152,10 +178,9 @@ if __name__ == "__main__":
     argparser.add_argument("--vocab", help="Vocabulary that can be features",
                            type=str, default="data/vocab", required=False)
     argparser.add_argument("--passes", help="Number of passes through train",
-                           type=int, default=1, required=False)
+                           type=int, default=4, required=False)
     argparser.add_argument("--ec", help="Extra credit option (df, lazy, or rate)",
-                           type=str, default="")
-
+                           type=str, default="df")
     args = argparser.parse_args()
     train, test, vocab = read_dataset(args.positive, args.negative, args.vocab)
 
@@ -166,8 +191,10 @@ if __name__ == "__main__":
         lr = LogReg(len(vocab), args.mu, lambda x: args.step)
     else:
         # Modify this code if you do learning rate extra credit
-        raise NotImplementedError
+        decay = 0.001
+        lr = LogReg(len(vocab), args.mu, lambda x: args.step * 1/(1 + x*decay))
 
+    learning_history = []
     # Iterations
     update_number = 0
     for pp in range(args.passes):
@@ -186,8 +213,26 @@ if __name__ == "__main__":
                 ho_lp, ho_acc = lr.progress(test)
                 print("Update %i\tTP %f\tHP %f\tTA %f\tHA %f" %
                       (update_number, train_lp, ho_lp, train_acc, ho_acc))
-
+                learning_history.append([update_number, train_lp, ho_lp, train_acc, ho_acc])
     # Final update with empty example
     lr.finalize_lazy(update_number)
     print("Update %i\tTP %f\tHP %f\tTA %f\tHA %f" %
           (update_number, train_lp, ho_lp, train_acc, ho_acc))
+    np.save("tfidf.npy", learning_history)
+
+    # calculate best and worst predictors
+
+    x_arr = np.zeros([len(train), lr.dimension])
+    for k, train_data in enumerate(train):
+        x_arr[k,:]=train_data.x
+    x_std = np.std(x_arr, axis=0)
+    predictor_weight = [(x, y) for x, y in enumerate(lr.beta) if y > 0]
+    predictors = sorted(predictor_weight, key=lambda x: x[1])
+    print("Worst Predictors", [vocab[i] for i, k in predictors[0:10]])
+    print("Best Predictors", [vocab[i] for i, k in predictors[:-10:-1]])
+
+    predictor_weight = [(x, y) for x, y in enumerate(lr.beta) if y < 0]
+    predictors = sorted(predictor_weight, key=lambda x: abs(x[1]))
+    print("Worst Predictors", [vocab[i] for i, k in predictors[0:10]])
+    print("Best Predictors", [vocab[i] for i, k in predictors[:-10:-1]])
+
